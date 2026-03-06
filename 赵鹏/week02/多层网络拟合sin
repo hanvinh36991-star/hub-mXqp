@@ -1,0 +1,103 @@
+import torch
+import torch.nn as nn
+import numpy as np
+import matplotlib.pyplot as plt
+
+# 确保中文显示正常
+plt.rcParams["font.family"] = ["SimHei", "WenQuanYi Micro Hei", "Heiti TC"]
+plt.rcParams['axes.unicode_minus'] = False
+
+# 1. 生成sin函数的模拟数据
+# 生成0到2π之间的1000个均匀分布的点
+X_numpy = np.linspace(0, 2 * np.pi, 1000).reshape(-1, 1)  # 形状 (1000, 1)
+# 生成带噪声的sin函数值
+y_numpy = np.sin(X_numpy) + 0.1 * np.random.randn(*X_numpy.shape)  # 添加少量噪声
+
+# 转换为torch张量
+X = torch.from_numpy(X_numpy).float()
+y = torch.from_numpy(y_numpy).float()
+
+print("sin函数数据生成完成。")
+print(f"数据形状: X={X.shape}, y={y.shape}")
+print("---" * 10)
+
+
+# 2. 定义多层神经网络模型
+class SinFittingNet(nn.Module):
+    def __init__(self):
+        super(SinFittingNet, self).__init__()
+        # 定义网络层：输入层(1) -> 隐藏层1(50) -> 隐藏层2(30) -> 输出层(1)
+        self.layers = nn.Sequential(
+            nn.Linear(1, 50),  # 第一层：线性变换，1个输入特征，50个输出特征
+            nn.ReLU(),  # 激活函数，引入非线性
+            nn.Linear(50, 30),  # 第二层：50个输入，30个输出
+            nn.ReLU(),  # 激活函数
+            nn.Linear(30, 1)  # 输出层：30个输入，1个输出（预测sin值）
+        )
+
+    def forward(self, x):
+        # 前向传播
+        return self.layers(x)
+
+
+# 初始化模型
+model = SinFittingNet()
+print("神经网络模型结构：")
+print(model)
+print("---" * 10)
+
+# 3. 定义损失函数和优化器
+loss_fn = nn.MSELoss()  # 回归任务仍使用均方误差损失
+optimizer = torch.optim.Adam(model.parameters(), lr=0.001)  # 使用Adam优化器，收敛更快
+
+# 4. 训练模型
+num_epochs = 5000
+loss_history = []  # 记录损失变化
+
+for epoch in range(num_epochs):
+    # 前向传播
+    y_pred = model(X)
+
+    # 计算损失
+    loss = loss_fn(y_pred, y)
+    loss_history.append(loss.item())
+
+    # 反向传播和优化
+    optimizer.zero_grad()  # 清空梯度
+    loss.backward()  # 计算梯度
+    optimizer.step()  # 更新参数
+
+    # 每500个epoch打印一次损失
+    if (epoch + 1) % 500 == 0:
+        print(f'Epoch [{epoch + 1}/{num_epochs}], Loss: {loss.item():.6f}')
+
+print("\n训练完成！")
+print("---" * 10)
+
+# 5. 模型预测（关闭梯度计算以提高效率）
+with torch.no_grad():
+    y_predicted = model(X).numpy()  # 转换为numpy数组用于绘图
+
+# 6. 可视化结果
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
+
+# 子图1：sin函数拟合结果
+ax1.scatter(X_numpy, y_numpy, label='带噪声的原始数据', color='blue', alpha=0.3, s=5)
+ax1.plot(X_numpy, np.sin(X_numpy), label='纯净的sin(x)曲线', color='green', linewidth=2)
+ax1.plot(X_numpy, y_predicted, label='神经网络拟合曲线', color='red', linewidth=2)
+ax1.set_xlabel('X (0 ~ 2π)')
+ax1.set_ylabel('y = sin(x) + 噪声')
+ax1.set_title('多层神经网络拟合sin函数')
+ax1.legend()
+ax1.grid(True)
+
+# 子图2：损失变化曲线
+ax2.plot(range(num_epochs), loss_history, color='purple', linewidth=1.5)
+ax2.set_xlabel('训练轮数 (Epoch)')
+ax2.set_ylabel('均方误差损失 (MSE Loss)')
+ax2.set_title('训练过程中损失的变化')
+ax2.grid(True)
+ax2.set_yscale('log')  # 对数刻度，更清晰看到损失下降
+
+plt.tight_layout()
+plt.show()

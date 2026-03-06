@@ -1,0 +1,19 @@
+import sys
+import site
+import pkg_resources
+# 1. 查看当前 Python 解释器的完整路径
+print("解释器路径:", sys.executable)
+
+# 2. 查看 Python 版本信息
+print("版本信息:", sys.version)
+
+# 3. 查看环境的根目录（即 Python 安装前缀）
+print("环境根目录:", sys.prefix)
+
+# 4. 查看第三方库的安装位置
+print("包安装路径:", site.getsitepackages())
+
+installed_packages = pkg_resources.working_set
+print("已安装的第三方库：")
+for package in installed_packages:
+    print(f"{package.project_name}=={package.version}")
